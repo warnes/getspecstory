@@ -89,7 +89,15 @@ specstory run codex     # Launch Codex CLI
 specstory run droid     # Launch Droid CLI
 specstory run gemini    # Launch Gemini CLI
 specstory run           # Launch default agent
+
+# Discover and report SpecStory history roots under the current directory
+specstory organize
+
+# Scan explicit repository roots for `.specstory/history` sessions
+specstory organize --roots ~/src/repo1 ~/src/repo2
 ```
+
+The `specstory organize` command helps identify when SpecStory session history has been saved in the repo where `specstory` was launched instead of the repo where the agent made changes. It discovers repository roots with `.specstory/history` folders, reports session history by project, and can optionally apply a relocation plan to move misplaced session files into the inferred repository history directory.
 
 All sessions automatically save to `.specstory/history/` in your current project.
 

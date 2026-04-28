@@ -73,6 +73,24 @@ Syncing all files for the current project:
 specstory sync <provider>
 ```
 
+Organize SpecStory history across repositories.
+
+The `specstory organize` command helps when SpecStory session history is placed in the repository where `specstory` was launched rather than the repository where the agent made changes. It discovers repository roots by locating `.specstory/history` folders, reports saved session files grouped by repo, and can optionally infer and apply a relocation plan to move misplaced session history files into the matching repository.
+
+```zsh
+# Discover repository roots with .specstory/history under the current directory
+specstory organize
+
+# Discover roots under a base directory
+specstory organize --base-dir ~/src
+
+# Scan specific repositories explicitly
+specstory organize --roots ~/src/repo1 ~/src/repo2
+
+# Apply the inferred relocation plan and move misplaced session history files
+specstory organize --roots ~/src/repo1 ~/src/repo2 --apply
+```
+
 With a specific session UUID:
 
 ```zsh

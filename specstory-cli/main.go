@@ -1290,6 +1290,7 @@ func syncSingleProvider(registry *factory.Registry, providerID string, cmd *cobr
 }
 
 var syncCmd *cobra.Command
+var organizeCmd *cobra.Command
 
 // Main entry point for the CLI
 func main() {
@@ -1426,6 +1427,7 @@ func main() {
 	runCmd = createRunCommand()
 	watchCmd := cmdpkg.CreateWatchCommand(&cloudURL, localTimeZone, debugDir)
 	syncCmd = createSyncCommand()
+	organizeCmd = cmdpkg.CreateOrganizeCommand()
 	listCmd := cmdpkg.CreateListCommand()
 	checkCmd := cmdpkg.CreateCheckCommand()
 	versionCmd := cmdpkg.CreateVersionCommand(version)
@@ -1446,6 +1448,7 @@ func main() {
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(watchCmd)
 	rootCmd.AddCommand(syncCmd)
+	rootCmd.AddCommand(organizeCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(checkCmd)
