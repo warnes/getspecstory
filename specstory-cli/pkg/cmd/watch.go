@@ -95,7 +95,7 @@ By default, 'watch' is for activity from all registered agent providers. Specify
 			onlyCloudSync, _ := cmd.Flags().GetBool("only-cloud-sync")
 			provenanceEnabled, _ := cmd.Flags().GetBool("provenance")
 			noTelemetryPrompts, _ := cmd.Flags().GetBool("no-telemetry-prompts")
-			redactSecretsFlag, _ := cmd.Flags().GetBool("redact-secrets")
+			noRedactSecretsFlag, _ := cmd.Flags().GetBool("no-redact-secrets")
 
 			// Apply debug dir override from flag if provided
 			if flagDebugDir != "" {
@@ -211,7 +211,7 @@ By default, 'watch' is for activity from all registered agent providers. Specify
 					DebugRaw:               debugRaw,
 					UseUTC:                 useUTC,
 					NoTelemetryPrompts:     noTelemetryPrompts,
-					RedactSecrets:          redactSecretsFlag,
+					RedactSecrets:          !noRedactSecretsFlag,
 					RedactionExtraPatterns: redactionExtraPatterns,
 				})
 				if err != nil {
@@ -332,7 +332,7 @@ By default, 'watch' is for activity from all registered agent providers. Specify
 	watchCmd.Flags().String("telemetry-endpoint", "", "Open Telemetry Protocol (OTLP) gRPC collector endpoint (default is off, e.g., localhost:4317)")
 	watchCmd.Flags().String("telemetry-service-name", "", "override the default service name for telemetry, if telemetry is enabled")
 	watchCmd.Flags().Bool("no-telemetry-prompts", false, "exclude prompt text from telemetry spans, if telemetry is enabled")
-	watchCmd.Flags().Bool("redact-secrets", redactSecrets, "redact API keys and tokens from saved markdown history (default: true)")
+	watchCmd.Flags().Bool("no-redact-secrets", !redactSecrets, "disable redaction of API keys and tokens from saved markdown history")
 
 	return watchCmd
 }

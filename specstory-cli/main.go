@@ -1409,7 +1409,7 @@ func main() {
 	silent = cfg.IsSilentEnabled()
 
 	noTelemetryPrompts = noTelemetryPrompts || cfg.IsTelemetryPromptsDisabled()
-	noRedactSecrets = !cfg.IsRedactionEnabled()
+	noRedactSecrets = noRedactSecrets || !cfg.IsRedactionEnabled()
 	redactionExtraPatterns = cfg.GetRedactionExtraPatterns()
 
 	// Set SPI debug dir override before any commands run
@@ -1490,6 +1490,7 @@ func main() {
 	syncCmd.Flags().StringVar(&telemetryEndpoint, "telemetry-endpoint", "", "Open Telemetry Protocol (OTLP) gRPC collector endpoint (default is off, e.g., localhost:4317)")
 	syncCmd.Flags().StringVar(&telemetryServiceName, "telemetry-service-name", "", "override the default service name for telemetry, if telemetry is enabled")
 	syncCmd.Flags().BoolVar(&noTelemetryPrompts, "no-telemetry-prompts", noTelemetryPrompts, "exclude prompt text from telemetry spans, if telemetry is enabled")
+	syncCmd.Flags().BoolVar(&noRedactSecrets, "no-redact-secrets", noRedactSecrets, "disable redaction of API keys and tokens from saved markdown history")
 
 	runCmd.Flags().BoolVar(&provenanceEnabled, "provenance", false, "enable AI provenance tracking (correlate file changes to agent activity)")
 	_ = runCmd.Flags().MarkHidden("provenance") // Hidden flag
@@ -1507,6 +1508,7 @@ func main() {
 	runCmd.Flags().StringVar(&telemetryEndpoint, "telemetry-endpoint", "", "Open Telemetry Protocol (OTLP) gRPC collector endpoint (default is off, e.g., localhost:4317)")
 	runCmd.Flags().StringVar(&telemetryServiceName, "telemetry-service-name", "", "override the default service name for telemetry, if telemetry is enabled")
 	runCmd.Flags().BoolVar(&noTelemetryPrompts, "no-telemetry-prompts", noTelemetryPrompts, "exclude prompt text from telemetry spans, if telemetry is enabled")
+	runCmd.Flags().BoolVar(&noRedactSecrets, "no-redact-secrets", noRedactSecrets, "disable redaction of API keys and tokens from saved markdown history")
 
 	// Initialize analytics with the full CLI command (unless disabled)
 	slog.Debug("Analytics initialization check", "noAnalytics", noAnalytics, "flag_should_disable", noAnalytics)
