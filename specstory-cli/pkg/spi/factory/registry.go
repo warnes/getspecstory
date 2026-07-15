@@ -12,7 +12,9 @@ import (
 
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/providers/claudecode"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/providers/codexcli"
+	"github.com/specstoryai/getspecstory/specstory-cli/pkg/providers/copilotide"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/providers/cursorcli"
+	"github.com/specstoryai/getspecstory/specstory-cli/pkg/providers/cursoride"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/providers/deepseektui"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/providers/droidcli"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/providers/geminicli"
@@ -77,6 +79,29 @@ func (r *Registry) registerAll() {
 	droidProvider := droidcli.NewProvider()
 	r.providers["droid"] = droidProvider
 	slog.Debug("Registered provider", "id", "droid", "name", droidProvider.Name())
+
+	cursorideProvider := cursoride.NewProvider()
+	r.providers["cursoride"] = cursorideProvider
+	slog.Debug("Registered provider", "id", "cursoride", "name", cursorideProvider.Name())
+
+	// The Copilot IDE provider is variant-driven: one instance per VS Code
+	// distribution, keyed by the variant's own ID so the registry key always
+	// matches the provider ID stamped into generated session data.
+	copilotideProvider := copilotide.NewProvider(copilotide.VSCode)
+	r.providers[copilotide.VSCode.ID] = copilotideProvider
+	slog.Debug("Registered provider", "id", copilotide.VSCode.ID, "name", copilotideProvider.Name())
+
+	copilotideInsidersProvider := copilotide.NewProvider(copilotide.VSCodeInsiders)
+	r.providers[copilotide.VSCodeInsiders.ID] = copilotideInsidersProvider
+	slog.Debug("Registered provider", "id", copilotide.VSCodeInsiders.ID, "name", copilotideInsidersProvider.Name())
+
+	copilotideVSCodiumProvider := copilotide.NewProvider(copilotide.VSCodium)
+	r.providers[copilotide.VSCodium.ID] = copilotideVSCodiumProvider
+	slog.Debug("Registered provider", "id", copilotide.VSCodium.ID, "name", copilotideVSCodiumProvider.Name())
+
+	copilotideVSCodiumInsidersProvider := copilotide.NewProvider(copilotide.VSCodiumInsiders)
+	r.providers[copilotide.VSCodiumInsiders.ID] = copilotideVSCodiumInsidersProvider
+	slog.Debug("Registered provider", "id", copilotide.VSCodiumInsiders.ID, "name", copilotideVSCodiumInsidersProvider.Name())
 
 	deepseekProvider := deepseektui.NewProvider()
 	r.providers["deepseek"] = deepseekProvider

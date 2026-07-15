@@ -21,6 +21,7 @@ import (
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/cloud"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/config"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/provenance"
+	"github.com/specstoryai/getspecstory/specstory-cli/pkg/providers/copilotide"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/session"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/sessionindex"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/spi"
@@ -382,7 +383,7 @@ func prepareResumeTarget(plan *resumePlan, cwd string, out io.Writer) (string, e
 		if errors.Is(err, spi.ErrReconstructionUnsupported) {
 			track("unsupported")
 			return "", utils.ValidationError{Message: fmt.Sprintf(
-				"%s can't yet be a cross-agent resume target. Choose Claude Code or Codex CLI (or resume in %s itself).",
+				"%s can't yet be a cross-agent resume target. Choose a different target agent (or resume in %s itself).",
 				plan.to.Name(), plan.from.Name())}
 		}
 		slog.Warn("resume: reconstruction failed", "from", plan.fromID, "to", plan.toID, "error", err)
@@ -391,6 +392,9 @@ func prepareResumeTarget(plan *resumePlan, cwd string, out io.Writer) (string, e
 	}
 	track("success")
 	fprintf(out, "\nReconstructed %s session into %s as %s.\n", plan.from.Name(), plan.to.Name(), shortID(rec.SessionID))
+	if note := restartNote(plan); note != "" {
+		fprintf(out, "\n%s\n", note)
+	}
 	return rec.SessionID, nil
 }
 
@@ -434,7 +438,7 @@ func prepareCloudResumeTarget(plan *resumePlan, cwd string, out io.Writer) (stri
 		if errors.Is(err, spi.ErrReconstructionUnsupported) {
 			track("unsupported")
 			return "", utils.ValidationError{Message: fmt.Sprintf(
-				"%s can't yet be a resume target. Choose Claude Code or Codex CLI.", plan.to.Name())}
+				"%s can't yet be a resume target. Choose a different target agent.", plan.to.Name())}
 		}
 		slog.Warn("resume: cloud reconstruction failed", "from", plan.fromID, "to", plan.toID, "error", err)
 		track("error")
@@ -442,6 +446,9 @@ func prepareCloudResumeTarget(plan *resumePlan, cwd string, out io.Writer) (stri
 	}
 	track("success")
 	fprintf(out, "Reconstructed cloud %s session into %s as %s.\n", plan.from.Name(), plan.to.Name(), shortID(rec.SessionID))
+	if note := restartNote(plan); note != "" {
+		fprintf(out, "\n%s\n", note)
+	}
 	return rec.SessionID, nil
 }
 
@@ -469,12 +476,37 @@ func materializeReconstructed(plan *resumePlan, cwd string, data *schema.Session
 	// instant it starts. On a filesystem without strong close-to-open coherence the freshly
 	// written file can lag, so confirm it is actually readable before handing the agent a
 	// --resume it would otherwise reject as "session not found".
-	if err := waitForSessionFileVisible(path, sessionFileVisibleTimeout); err != nil {
-		return nil, fmt.Errorf("reconstructed %s session is not ready to resume: %w", plan.to.Name(), err)
+	// Skip when Content is empty: some providers (e.g. Cursor IDE) write the session data
+	// directly to their own store (SQLite) and return an empty sentinel file whose only purpose
+	// is to satisfy this path — there is no file content to wait for.
+	if len(rec.Content) > 0 {
+		if err := waitForSessionFileVisible(path, sessionFileVisibleTimeout); err != nil {
+			return nil, fmt.Errorf("reconstructed %s session is not ready to resume: %w", plan.to.Name(), err)
+		}
 	}
 
 	slog.Info("resume: wrote reconstructed session", "path", path, "newID", rec.SessionID)
 	return rec, nil
+}
+
+// restartNote returns the provider-specific instruction the user needs after a session has
+// been reconstructed into an IDE-backed target, or "" when the target needs none. IDE
+// providers keep their session index in memory, so the imported session only becomes
+// visible after an app restart.
+func restartNote(plan *resumePlan) string {
+	if plan.toID == "cursoride" {
+		return "Note: only Cursor 3 is supported. Restart Cursor to see the imported session in the Agent sidebar."
+	}
+	// A type check (not an ID comparison) so every Copilot IDE variant — stock
+	// VS Code, Insiders, and any added later — gets the restart note.
+	if _, ok := plan.to.(*copilotide.Provider); ok {
+		// VS Code holds its chat session index in memory and flushes it over ours on
+		// shutdown, so the imported session only shows up after a full restart.
+		// "Developer: Reload Window" is NOT enough — it keeps the main process (and
+		// the in-memory index) alive; verified empirically.
+		return "Note: quit and restart VS Code to see the imported session in the Chat panel."
+	}
+	return ""
 }
 
 // schemaVersionNewer reports whether SessionData version v is newer than this CLI's supported
