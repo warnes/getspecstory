@@ -82,6 +82,17 @@ With a specific session UUID:
 specstory sync -s <session-uuid>
 ```
 
+Supervising watchers for every git repo under a directory:
+
+```zsh
+# Discovers git repos under ~/src, then starts a 'specstory watch' process in a
+# repo when a coding agent becomes active there and stops it after 5m of inactivity.
+specstory monitor ~/src
+
+# Tune idle reaping, discovery depth, and discovery exclusions
+specstory monitor ~/src --idle-timeout 2m --max-depth 6 --exclude "archive/*"
+```
+
 ### Resume & Search
 
 SpecStory indexes every session it sees into `~/.specstory/sessions.db` so you can pick up

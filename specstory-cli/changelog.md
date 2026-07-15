@@ -6,6 +6,7 @@
 
 - New agent providers for in-IDE chat capture, merged from the upstream `copilot-ide` PR branch: **VS Code Copilot IDE** (`copilotide`, with `copilotide-insiders`, `copilotide-vscodium`, and `copilotide-vscodium-insiders` variants) and **Cursor IDE** (`cursoride`). `specstory watch` and `specstory sync` now capture GitHub Copilot Chat sessions from VS Code workspace storage and Cursor IDE chat sessions.
 - Secret redaction (this fork's `[redaction]` feature, on by default) applies automatically to sessions captured by the new IDE providers — redaction runs centrally on generated markdown regardless of provider.
+- New `specstory monitor <root-dir>` command: discovers every git repo under a root directory, watches the coding agents' session storage (Claude Code, Codex CLI, Cursor CLI) for activity, and supervises per-repo `specstory watch` processes — spawning them on agent activity and stopping them after a configurable idle timeout (`--idle-timeout`, default 5m). Repo discovery depth and exclusions are tunable via `--max-depth` / `--exclude`, and defaults can be set in the new `[monitor]` config section.
 
 ## v2.2.0 2026-07-14
 

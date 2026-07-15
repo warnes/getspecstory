@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
@@ -1326,5 +1327,40 @@ func TestGetResumeViewModeDefaults(t *testing.T) {
 	c.Resume.ViewMode = "sparse"
 	if c.GetResumeViewMode() != "sparse" {
 		t.Errorf("view mode not honored")
+	}
+}
+
+func TestMonitorIdleTimeout(t *testing.T) {
+	tests := []struct {
+		name       string
+		configured string
+		want       time.Duration
+	}{
+		{name: "unset uses default", configured: "", want: 5 * time.Minute},
+		{name: "valid duration honored", configured: "90s", want: 90 * time.Second},
+		{name: "unparseable falls back to default", configured: "not-a-duration", want: 5 * time.Minute},
+		{name: "non-positive falls back to default", configured: "-1m", want: 5 * time.Minute},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var c Config
+			c.Monitor.IdleTimeout = tt.configured
+			if got := c.MonitorIdleTimeout(); got != tt.want {
+				t.Errorf("MonitorIdleTimeout() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMonitorMaxDepthDefaults(t *testing.T) {
+	var c Config
+	if got := c.MonitorMaxDepth(); got != 4 {
+		t.Errorf("default MonitorMaxDepth() = %d, want 4", got)
+	}
+	depth := 7
+	c.Monitor.MaxDepth = &depth
+	if got := c.MonitorMaxDepth(); got != 7 {
+		t.Errorf("MonitorMaxDepth() = %d, want 7", got)
 	}
 }
