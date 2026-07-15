@@ -31,6 +31,8 @@ The following coding agents are supported in the SpecStory CLI:
 | [Droid CLI](https://factory.ai/product/cli)               | [droidcli](pkg/providers/droidcli/)       | JSONL       | `~/.factory/sessions/`  |
 | [Gemini CLI](https://ai.google.dev/gemini-cli)            | [geminicli](pkg/providers/geminicli/)     | JSON        | `~/.gemini/tmp/`        |
 | [DeepSeek TUI](https://github.com/Hmbown/DeepSeek-TUI)    | [deepseektui](pkg/providers/deepseektui/) | JSON        | `~/.deepseek/sessions/` |
+| [VS Code Copilot IDE](https://code.visualstudio.com/docs/copilot/overview) | [copilotide](pkg/providers/copilotide/) | JSONL       | VS Code `workspaceStorage/*/chatSessions/` |
+| [Cursor IDE](https://cursor.com)                          | [cursoride](pkg/providers/cursoride/)     | SQLite      | Cursor `workspaceStorage/` + global `state.vscdb` |
 
 ### Agent Provider SPI (Service Provider Interface)
 

@@ -1,5 +1,12 @@
 # Specstory CLI Changelog
 
+## Unreleased (fork: warnes/getspecstory)
+
+### 📢 Announcements
+
+- New agent providers for in-IDE chat capture, merged from the upstream `copilot-ide` PR branch: **VS Code Copilot IDE** (`copilotide`, with `copilotide-insiders`, `copilotide-vscodium`, and `copilotide-vscodium-insiders` variants) and **Cursor IDE** (`cursoride`). `specstory watch` and `specstory sync` now capture GitHub Copilot Chat sessions from VS Code workspace storage and Cursor IDE chat sessions.
+- Secret redaction (this fork's `[redaction]` feature, on by default) applies automatically to sessions captured by the new IDE providers — redaction runs centrally on generated markdown regardless of provider.
+
 ## v2.2.0 2026-07-14
 
 ### 📢 Announcements
