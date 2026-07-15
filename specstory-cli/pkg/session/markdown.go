@@ -76,7 +76,11 @@ func GenerateMarkdownFromAgentSession(sessionData *SessionData, includeMessageID
 
 	// Ensure markdown ends with exactly one newline
 	result := strings.TrimRight(markdown.String(), "\n") + "\n"
-	return result, nil
+
+	// Redact here, not only in ProcessSingleSession: sync's bulk path, --print,
+	// and the TUI previews emit this markdown directly, and every one of them
+	// leaked secrets when redaction lived only in ProcessSingleSession.
+	return redactIfEnabled(result), nil
 }
 
 // generateTitle creates a title for the session

@@ -242,6 +242,12 @@ specstory watch`
 				return utils.ValidationError{Message: "--only-cloud-sync requires authentication. Please run 'specstory login' first"}
 			}
 
+			// Configure process-wide redaction AFTER flag parsing so
+			// --no-redact-secrets is respected. This makes every markdown
+			// generation redacted at the source (sync bulk path, --print, TUI
+			// previews), not only the ProcessSingleSession path.
+			sessionpkg.ConfigureRedaction(!noRedactSecrets, redactionExtraPatterns)
+
 			return nil
 		},
 		Run: func(c *cobra.Command, args []string) {

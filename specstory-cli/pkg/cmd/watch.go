@@ -98,6 +98,11 @@ By default, 'watch' is for activity from all registered agent providers. Specify
 			noTelemetryPrompts, _ := cmd.Flags().GetBool("no-telemetry-prompts")
 			noRedactSecretsFlag, _ := cmd.Flags().GetBool("no-redact-secrets")
 
+			// Watch owns its own --no-redact-secrets flag (root's PersistentPreRunE
+			// only sees main's flag var), so re-apply the resolved value to the
+			// generation-level redaction layer here.
+			session.ConfigureRedaction(!noRedactSecretsFlag, redactionExtraPatterns)
+
 			// Apply debug dir override from flag if provided
 			if flagDebugDir != "" {
 				spi.SetDebugBaseDir(flagDebugDir)

@@ -151,6 +151,70 @@ func TestRedactContent_EmptyInput(t *testing.T) {
 	}
 }
 
+// TestGenerateMarkdown_RedactsSecrets is the regression test for the bulk-sync
+// leak: the sync/print/TUI paths call GenerateMarkdownFromAgentSession directly
+// (not via ProcessSingleSession), so redaction must live inside markdown
+// generation itself or those paths write secrets to disk and cloud verbatim.
+// Reproduced live: a fake ghp_ token pasted into VS Code Copilot Chat survived
+// into the markdown written by `specstory sync copilotide`.
+func TestGenerateMarkdown_RedactsSecrets(t *testing.T) {
+	sd := &SessionData{
+		Provider:  ProviderInfo{Name: "VS Code Copilot IDE"},
+		SessionID: "s1",
+		CreatedAt: "2026-07-15T20:35:29Z",
+		Exchanges: []Exchange{{
+			StartTime: "2026-07-15T20:35:29Z",
+			Messages: []Message{
+				{Role: "user", Timestamp: "2026-07-15T20:35:29Z", Content: []ContentPart{{
+					Type: "text",
+					Text: "Here is a fake token to test: `ghp_FakeTokenAbCdEfGhIjKlMnOpQrStUvWxYz0`",
+				}}},
+			},
+		}},
+	}
+
+	md, err := GenerateMarkdownFromAgentSession(sd, false, true)
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	if strings.Contains(md, "ghp_FakeToken") {
+		t.Errorf("raw secret leaked into generated markdown:\n%s", md)
+	}
+	if !strings.Contains(md, "[REDACTED:GITHUB_PAT]") {
+		t.Errorf("expected [REDACTED:GITHUB_PAT] in generated markdown:\n%s", md)
+	}
+}
+
+// TestGenerateMarkdown_RedactionDisabled verifies --no-redact-secrets still
+// works through the generation-level layer.
+func TestGenerateMarkdown_RedactionDisabled(t *testing.T) {
+	ConfigureRedaction(false, nil)
+	t.Cleanup(func() { ConfigureRedaction(true, nil) })
+
+	sd := &SessionData{
+		Provider:  ProviderInfo{Name: "Claude Code"},
+		SessionID: "s2",
+		CreatedAt: "2026-07-15T20:35:29Z",
+		Exchanges: []Exchange{{
+			StartTime: "2026-07-15T20:35:29Z",
+			Messages: []Message{
+				{Role: "user", Timestamp: "2026-07-15T20:35:29Z", Content: []ContentPart{{
+					Type: "text",
+					Text: "token ghp_FakeTokenAbCdEfGhIjKlMnOpQrStUvWxYz0 here",
+				}}},
+			},
+		}},
+	}
+
+	md, err := GenerateMarkdownFromAgentSession(sd, false, true)
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	if !strings.Contains(md, "ghp_FakeTokenAbCdEfGhIjKlMnOpQrStUvWxYz0") {
+		t.Errorf("with redaction disabled, content should be unmodified:\n%s", md)
+	}
+}
+
 // TestRedactContent_GeneratedPatterns exercises one realistic fake token per
 // high-value category added by the gitleaks-derived generated rule set. All
 // tokens are invented for testing and are not real secrets.
@@ -232,9 +296,9 @@ func TestRedactContent_GeneratedPatterns(t *testing.T) {
 // surrounding text the pattern needed in order to match.
 func TestRedactContent_GroupReplacementKeepsContext(t *testing.T) {
 	tests := []struct {
-		name       string
-		input      string
-		want       string // exact expected output
+		name  string
+		input string
+		want  string // exact expected output
 	}{
 		{
 			name:  "AWS secret access key keeps assignment context",

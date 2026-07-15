@@ -44,10 +44,11 @@ var skippedRules = map[string]string{
 }
 
 type gitleaksRule struct {
-	ID          string `toml:"id"`
-	Description string `toml:"description"`
-	Regex       string `toml:"regex"`
-	SecretGroup int    `toml:"secretGroup"`
+	ID          string   `toml:"id"`
+	Description string   `toml:"description"`
+	Regex       string   `toml:"regex"`
+	SecretGroup int      `toml:"secretGroup"`
+	Keywords    []string `toml:"keywords"`
 }
 
 type gitleaksConfig struct {
@@ -192,7 +193,27 @@ func generate(rules []gitleaksRule, tag, sum string) ([]byte, int, int, error) {
 			group = 1
 		}
 		label := strings.ToUpper(strings.ReplaceAll(r.ID, "-", "_"))
-		fmt.Fprintf(&b, "\t{re: regexp.MustCompile(%s), label: %q, group: %d},\n", strconv.Quote(r.Regex), label, group)
+		// Keywords are gitleaks' regex prefilter: the (expensive) regex only runs
+		// when one of these literals appears in the lowercased content. Without
+		// this, 200+ regexes per document is pathologically slow on big sessions.
+		keywords := make([]string, 0, len(r.Keywords))
+		for _, kw := range r.Keywords {
+			if kw = strings.ToLower(strings.TrimSpace(kw)); kw != "" {
+				keywords = append(keywords, kw)
+			}
+		}
+		sort.Strings(keywords)
+		var kwLit strings.Builder
+		kwLit.WriteString("[]string{")
+		for i, kw := range keywords {
+			if i > 0 {
+				kwLit.WriteString(", ")
+			}
+			kwLit.WriteString(strconv.Quote(kw))
+		}
+		kwLit.WriteString("}")
+		fmt.Fprintf(&b, "\t{re: regexp.MustCompile(%s), label: %q, group: %d, keywords: %s},\n",
+			strconv.Quote(r.Regex), label, group, kwLit.String())
 		included++
 	}
 	b.WriteString("}\n")
