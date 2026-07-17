@@ -16,6 +16,7 @@ import (
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/analytics"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/log"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/monitor"
+	"github.com/specstoryai/getspecstory/specstory-cli/pkg/providers/copilotide"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/utils"
 )
 
@@ -31,7 +32,8 @@ func CreateMonitorCommand(defaultIdleTimeout time.Duration, defaultMaxDepth int,
 		Short:   "Supervise 'specstory watch' across all git repos under a directory",
 		Long: `Discover every git repository under <root-dir> and supervise per-repo 'specstory watch' processes.
 
-The monitor watches the coding agents' own session storage (Claude Code, Codex CLI, Cursor CLI)
+The monitor watches the coding agents' own session storage (Claude Code, Codex CLI, Cursor CLI,
+and VS Code Copilot IDE — including the Insiders, VSCodium, and VSCodium Insiders variants)
 for new activity, maps that activity back to a discovered repository, and starts a 'specstory watch'
 child in that repository. Children idle past the timeout are stopped and respawned on new activity.
 
@@ -131,8 +133,33 @@ specstory monitor ~/src --exclude "archive/*" --exclude scratch`,
 					}
 				}(provider, storageRoot)
 			}
+			// VS Code Copilot chat storage gets a dedicated selective watcher
+			// (monitor.WatchCopilotWorkspaceStorage): workspaceStorage can hold
+			// thousands of workspace directories, so the generic recursive root
+			// watcher above would exhaust file descriptors. The watcher resolves
+			// events to repos itself, so activity feeds the supervisor directly.
+			// Absent variants are common (most machines run at most one VS Code
+			// distribution), hence the quiet Debug-level skip.
+			for _, variant := range copilotide.Variants() {
+				storageRoot := roots.CopilotIDE[variant.ID]
+				if storageRoot == "" {
+					slog.Debug("Monitor: skipping absent Copilot IDE variant", "variant", variant.AppName)
+					continue
+				}
+				if _, statErr := os.Stat(storageRoot); statErr != nil {
+					slog.Debug("Monitor: skipping missing Copilot IDE workspace storage", "variant", variant.AppName, "path", storageRoot)
+					continue
+				}
+				started++
+				go func(appName, storageRoot string) {
+					slog.Info("Monitor: watching Copilot IDE workspace storage", "variant", appName, "path", storageRoot)
+					if watchErr := monitor.WatchCopilotWorkspaceStorage(ctx, storageRoot, resolver, supervisor.NotifyActivity); watchErr != nil {
+						slog.Error("Monitor: Copilot IDE storage watcher failed", "variant", appName, "path", storageRoot, "error", watchErr)
+					}
+				}(variant.AppName, storageRoot)
+			}
 			if started == 0 {
-				return utils.ValidationError{Message: "no agent storage roots exist to watch (looked for Claude Code, Codex CLI, and Cursor CLI session storage)"}
+				return utils.ValidationError{Message: "no agent storage roots exist to watch (looked for Claude Code, Codex CLI, Cursor CLI, and VS Code Copilot IDE session storage)"}
 			}
 
 			go supervisor.Run(ctx)
@@ -161,7 +188,7 @@ specstory monitor ~/src --exclude "archive/*" --exclude scratch`,
 	monitorCmd.Flags().String("idle-timeout", defaultIdleTimeout.String(), "stop a repo's watch process after this much inactivity (Go duration, e.g. \"5m\")")
 	monitorCmd.Flags().Int("max-depth", defaultMaxDepth, "how many directory levels below <root-dir> to search for git repos")
 	monitorCmd.Flags().StringArray("exclude", defaultExclude, "path glob (relative to <root-dir>) to skip during repo discovery (repeatable)")
-	monitorCmd.Flags().StringArray("storage-root", nil, "TEST ONLY: override an agent storage root as provider:path (providers: claude, codex, cursor; repeatable)")
+	monitorCmd.Flags().StringArray("storage-root", nil, "TEST ONLY: override an agent storage root as provider:path (providers: claude, codex, cursor, copilotide; repeatable)")
 	_ = monitorCmd.Flags().MarkHidden("storage-root") // Hidden test-only flag
 
 	return monitorCmd
@@ -188,8 +215,16 @@ func applyStorageRootOverrides(roots *monitor.StorageRoots, overrides []string) 
 			roots.Codex = abs
 		case "cursor":
 			roots.Cursor = abs
+		case "copilotide":
+			// Overrides target the stock "Code" variant only; that is enough
+			// for fixture testing, and per-variant overrides would complicate
+			// the provider:path syntax for no test benefit.
+			if roots.CopilotIDE == nil {
+				roots.CopilotIDE = make(map[string]string)
+			}
+			roots.CopilotIDE[copilotide.VSCode.ID] = abs
 		default:
-			return utils.ValidationError{Message: fmt.Sprintf("invalid --storage-root provider %q: must be claude, codex, or cursor", provider)}
+			return utils.ValidationError{Message: fmt.Sprintf("invalid --storage-root provider %q: must be claude, codex, cursor, or copilotide", provider)}
 		}
 	}
 	return nil

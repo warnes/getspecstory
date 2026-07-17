@@ -8,6 +8,7 @@ import (
 
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/providers/claudecode"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/providers/codexcli"
+	"github.com/specstoryai/getspecstory/specstory-cli/pkg/providers/copilotide"
 	"github.com/specstoryai/getspecstory/specstory-cli/pkg/providers/cursorcli"
 )
 
@@ -19,6 +20,11 @@ type StorageRoots struct {
 	Claude string // ~/.claude/projects
 	Codex  string // ~/.codex/sessions (honors CODEX_HOME)
 	Cursor string // ~/.cursor/chats
+	// CopilotIDE maps a VS Code variant ID (copilotide.Variant.ID, e.g.
+	// "copilotide" for stock VS Code) to that variant's workspaceStorage
+	// directory. Per-variant because each VS Code distribution keeps its own
+	// storage tree; variants absent from this machine have no entry.
+	CopilotIDE map[string]string
 }
 
 // DefaultStorageRoots returns the real storage roots the agents write to.
@@ -42,13 +48,24 @@ func DefaultStorageRoots() (StorageRoots, error) {
 		return StorageRoots{}, err
 	}
 
+	// Copilot chat storage is per VS Code distribution. Only variants whose
+	// workspaceStorage actually exists get an entry (GetWorkspaceStoragePath
+	// returns "" otherwise); the monitor command skips absent variants.
+	copilotRoots := make(map[string]string)
+	for _, variant := range copilotide.Variants() {
+		if p := copilotide.GetWorkspaceStoragePath(variant.DataDirName); p != "" {
+			copilotRoots[variant.ID] = p
+		}
+	}
+
 	return StorageRoots{
 		// claudecode only exports an existence-checking accessor for this path
 		// (GetClaudeCodeProjectsDir), but we need the path even when it does
 		// not exist yet, so build it the same way that accessor does.
-		Claude: filepath.Join(homeDir, ".claude", "projects"),
-		Codex:  codexRoot,
-		Cursor: cursorRoot,
+		Claude:     filepath.Join(homeDir, ".claude", "projects"),
+		Codex:      codexRoot,
+		Cursor:     cursorRoot,
+		CopilotIDE: copilotRoots,
 	}, nil
 }
 
@@ -119,6 +136,19 @@ func NewResolver(repos []string, roots StorageRoots) *Resolver {
 // under no known root, belongs to no discovered repo, or (for Codex) the
 // session metadata isn't readable yet — Codex creates the .jsonl before
 // writing its session_meta line, and the follow-up Write event retries.
+//
+// VS Code Copilot IDE events do not flow through here: workspaceStorage holds
+// thousands of workspace directories, so Copilot uses a dedicated selective
+// watcher (WatchCopilotWorkspaceStorage) that pre-maps the handful of
+// repo-relevant chatSessions directories instead of watching everything.
+//
+// Cursor IDE (pkg/providers/cursoride) has no resolver family here on
+// purpose: its chat activity lands in SQLite databases — every conversation
+// is a key-value row in the single global globalStorage/state.vscdb, with
+// per-workspace state.vscdb files mapping composer IDs to workspaces — so
+// attributing new activity to a project requires opening and polling those
+// databases, not the cheap event-path mapping used below. Deferred until
+// there is demand for it.
 func (r *Resolver) Resolve(eventPath string) (string, bool) {
 	if rel, ok := pathUnder(r.roots.Claude, eventPath); ok {
 		return r.resolveClaude(rel)

@@ -64,6 +64,13 @@ var (
 	}
 )
 
+// Variants returns every supported VS Code distribution. Callers that need to
+// cover all Copilot chat storage locations (e.g. the monitor command) iterate
+// this instead of hardcoding the variant list.
+func Variants() []Variant {
+	return []Variant{VSCode, VSCodeInsiders, VSCodium, VSCodiumInsiders}
+}
+
 // Provider implements the SPI Provider interface for the Copilot chat built
 // into a VS Code distribution (stock VS Code or VS Code Insiders).
 type Provider struct {

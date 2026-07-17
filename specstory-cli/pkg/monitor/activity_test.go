@@ -30,11 +30,14 @@ func newActivityFixture(t *testing.T) *activityFixture {
 			Claude: filepath.Join(base, "storage", "claude", "projects"),
 			Codex:  filepath.Join(base, "storage", "codex", "sessions"),
 			Cursor: filepath.Join(base, "storage", "cursor", "chats"),
+			CopilotIDE: map[string]string{
+				"copilotide": filepath.Join(base, "storage", "copilot", "workspaceStorage"),
+			},
 		},
 	}
 	f.repo1Sub = filepath.Join(f.repo1, "pkg", "deep")
 	f.repo2Sub = filepath.Join(f.repo2, "sub")
-	for _, dir := range []string{f.repo1Sub, f.repo2Sub, f.roots.Claude, f.roots.Codex, f.roots.Cursor} {
+	for _, dir := range []string{f.repo1Sub, f.repo2Sub, f.roots.Claude, f.roots.Codex, f.roots.Cursor, f.roots.CopilotIDE["copilotide"]} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatalf("failed to create fixture dir %s: %v", dir, err)
 		}

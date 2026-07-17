@@ -305,6 +305,27 @@ func codeWorkspaceContainsFolder(workspaceFilePath, canonicalFolder string) bool
 	return false
 }
 
+// ReadWorkspaceJSON reads and parses a workspace.json file. Exported (like
+// claudecode.EncodeProjectDirName / codexcli.SessionsRoot) for pkg/monitor,
+// which enumerates workspace storage itself to map workspaces to repos
+// without a per-project search.
+func ReadWorkspaceJSON(path string) (*WorkspaceJSON, error) {
+	return readWorkspaceJSON(path)
+}
+
+// URIToPath converts a file:// URI to a local file path. Exported for
+// pkg/monitor; see ReadWorkspaceJSON.
+func URIToPath(uri string) (string, error) {
+	return uriToPath(uri)
+}
+
+// CollectCodeWorkspaceFolders reads a .code-workspace JSON file and returns
+// the canonical paths of all listed folders. Exported for pkg/monitor; see
+// ReadWorkspaceJSON.
+func CollectCodeWorkspaceFolders(workspaceFilePath string) []string {
+	return collectCodeWorkspaceFolders(workspaceFilePath)
+}
+
 // readWorkspaceJSON reads and parses a workspace.json file
 func readWorkspaceJSON(path string) (*WorkspaceJSON, error) {
 	data, err := os.ReadFile(path)
